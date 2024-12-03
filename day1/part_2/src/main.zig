@@ -1,57 +1,36 @@
 const std = @import("std");
+const data = @embedFile("input.txt");
 
-const NumberLists = struct {
-    lhs: std.ArrayList(u32),
-    rhs: std.ArrayList(u32),
-};
+fn readNumberPairs(allocator: std.mem.Allocator) !usize {
+    var lhs = std.ArrayList(usize).init(allocator);
+    defer lhs.deinit();
 
-fn compare(a: u32, b: u32) bool {
-    return a < b;
-}
+    var rhs = std.ArrayList(usize).init(allocator);
+    defer rhs.deinit();
 
-fn readNumberPairs(allocator: std.mem.Allocator, filename: []const u8) !NumberLists {
-    // Create the lists
-    var lhs = std.ArrayList(u32).init(allocator);
-    errdefer lhs.deinit();
-    var rhs = std.ArrayList(u32).init(allocator);
-    errdefer rhs.deinit();
+    var it = std.mem.tokenizeScalar(u8, data, '\n');
+    while (it.next()) |token| {
+        var x = std.mem.tokenizeScalar(u8, token, ' ');
+        const lhs_val = x.next().?;
+        const rhs_val = x.next().?;
+        try lhs.append(try std.fmt.parseInt(usize, lhs_val, 10));
+        try rhs.append(try std.fmt.parseInt(usize, rhs_val, 10));
+    }
 
-    // Open the file
-    const file = try std.fs.cwd().openFile(filename, .{});
-    defer file.close();
-
-    // Create a buffered reader
-    var buf_reader = std.io.bufferedReader(file.reader());
-    var in_stream = buf_reader.reader();
-
-    var line = std.ArrayList(u8).init(allocator);
-    defer line.deinit();
-
-    while (true) {
-        in_stream.readUntilDelimiterArrayList(&line, '\n', 1024) catch |err| switch (err) {
-            error.EndOfStream => break,
-            else => return err,
-        };
-
-        var iter = std.mem.splitScalar(u8, line.items, ' ');
-
-        if (iter.next()) |part| {
-            const num = try std.fmt.parseInt(u32, part, 10);
-            try lhs.append(num);
-        }
-
-        while (iter.next()) |part| {
-            if (part.len > 0) {
-                const num = try std.fmt.parseInt(u32, part, 10);
-                try rhs.append(num);
-                break;
+    var result: usize = 0;
+    for (lhs.items) |l_value| {
+        // const count = std.mem.count(lists.rhs.items, |x| x == value);
+        var count: usize = 0;
+        for (rhs.items) |r_value| {
+            if (r_value == l_value) {
+                count += 1;
             }
         }
 
-        line.clearRetainingCapacity();
+        result += (l_value * count);
     }
 
-    return NumberLists{ .lhs = lhs, .rhs = rhs };
+    return result;
 }
 
 pub fn main() !void {
@@ -63,35 +42,8 @@ pub fn main() !void {
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
 
-    if (std.os.argv.len != 2) {
-        try stdout.print("Expect 1 argument got: {d}\n", .{std.os.argv.len - 1});
-
-        try bw.flush();
-        std.process.exit(1);
-    }
-
-    var args = std.process.args();
-    _ = args.skip();
-
-    var lists = try readNumberPairs(allocator, args.next().?);
-    defer lists.lhs.deinit();
-    defer lists.rhs.deinit();
-
-    var result: u32 = 0;
-    for (lists.lhs.items, 0..) |value, i| {
-        _ = i;
-
-        var count: u32 = 0;
-        for (lists.rhs.items) |x| {
-            if (x == value) {
-                count += 1;
-            }
-        }
-        // const count = std.mem.count(lists.rhs.items, |x| x == value);
-        result += (value * count);
-    }
+    const result = try readNumberPairs(allocator);
 
     try stdout.print("result: {d}\n", .{result});
     try bw.flush();
 }
-
