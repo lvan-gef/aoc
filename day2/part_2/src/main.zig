@@ -1,35 +1,38 @@
 const std = @import("std");
+const data = @embedFile("input.txt");
 
-pub fn getSortedListByRemovingOne(allocator: std.mem.Allocator, list: []const i32) !std.ArrayList(i32) {
+pub fn check_for_removing(allocator: std.mem.Allocator, list: []const i32) !std.ArrayList(i32) {
     var empty = std.ArrayList(i32).init(allocator);
     try empty.ensureTotalCapacity(list.len - 1);
 
     for (0..list.len) |i| {
         empty.clearRetainingCapacity();
         try empty.appendSlice(list[0..i]);
-        try empty.appendSlice(list[i + 1..]);
+        try empty.appendSlice(list[i + 1 ..]);
 
         // First check if sequence is strictly monotonic (no equal adjacent numbers)
         var has_equal = false;
         for (1..empty.items.len) |j| {
-            if (empty.items[j] == empty.items[j-1]) {
+            if (empty.items[j] == empty.items[j - 1]) {
                 has_equal = true;
                 break;
             }
         }
-        if (has_equal) continue;
+        if (has_equal) {
+            continue;
+        }
 
         // Then check if differences are valid and sequence is sorted
         var valid_differences = true;
         for (1..empty.items.len) |j| {
-            const diff = @abs(empty.items[j] - empty.items[j-1]);
+            const diff = @abs(empty.items[j] - empty.items[j - 1]);
             if (diff < 1 or diff > 3) {
                 valid_differences = false;
                 break;
             }
         }
 
-        if (valid_differences and (isSorted(empty.items, true) or isSorted(empty.items, false))) {
+        if (valid_differences and (is_sorted(empty.items, true) or is_sorted(empty.items, false))) {
             return empty;
         }
     }
@@ -38,7 +41,7 @@ pub fn getSortedListByRemovingOne(allocator: std.mem.Allocator, list: []const i3
     return empty;
 }
 
-fn isSorted(slice: []const i32, comptime ascending: bool) bool {
+fn is_sorted(slice: []const i32, comptime ascending: bool) bool {
     for (1..slice.len) |i| {
         if (ascending and slice[i] < slice[i - 1]) {
             return false;
@@ -52,49 +55,30 @@ fn isSorted(slice: []const i32, comptime ascending: bool) bool {
     return true;
 }
 
-fn readNumberPairs(allocator: std.mem.Allocator, filename: []const u8) !std.ArrayList(std.ArrayList(i32)) {
-    // Create the lists
-    var lhs = std.ArrayList(std.ArrayList(i32)).init(allocator);
+fn get_numbers(allocator: std.mem.Allocator) !std.ArrayList(std.ArrayList(i32)) {
+    var list = std.ArrayList(std.ArrayList(i32)).init(allocator);
     errdefer {
-        for (lhs.items) |item| {
+        for (list.items) |item| {
             item.deinit();
         }
-        lhs.deinit();
+        list.deinit();
     }
 
-    // Open the file
-    const file = try std.fs.cwd().openFile(filename, .{});
-    defer file.close();
-
-    // Create a buffered reader
-    var buf_reader = std.io.bufferedReader(file.reader());
-    var in_stream = buf_reader.reader();
-
-    var line = std.ArrayList(u8).init(allocator);
-    defer line.deinit();
-
-    while (true) {
-        in_stream.readUntilDelimiterArrayList(&line, '\n', 1024) catch |err| switch (err) {
-            error.EndOfStream => break,
-            else => return err,
-        };
-
-        var iter = std.mem.splitScalar(u8, line.items, ' ');
+    var it = std.mem.tokenizeScalar(u8, data, '\n');
+    while (it.next()) |token| {
         var rhs = std.ArrayList(i32).init(allocator);
         errdefer rhs.deinit();
 
-        while (iter.next()) |part| {
-            if (part.len > 0) {
-                const num = try std.fmt.parseInt(i32, part, 10);
-                try rhs.append(num);
-            }
+        var values = std.mem.tokenizeScalar(u8, token, ' ');
+        while (values.next()) |value| {
+            const int_value = try std.fmt.parseInt(i32, value, 10);
+            try rhs.append(int_value);
         }
-        try lhs.append(rhs);
 
-        line.clearRetainingCapacity();
+        try list.append(rhs);
     }
 
-    return lhs;
+    return list;
 }
 
 pub fn main() !void {
@@ -106,24 +90,19 @@ pub fn main() !void {
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
 
-    if (std.os.argv.len != 2) {
-        try stdout.print("Expect 1 argument got: {d}\n", .{std.os.argv.len - 1});
-
-        try bw.flush();
-        std.process.exit(1);
+    const lists = try get_numbers(allocator);
+    defer lists.deinit();
+    defer {
+        for (lists.items) |list| {
+            list.deinit();
+        }
     }
 
-    var args = std.process.args();
-    _ = args.skip();
-
-    const lists = try readNumberPairs(allocator, args.next().?);
-
     var result: u32 = 0;
-    for (lists.items, 0..) |v, i| {
-        _ = i;
+    for (lists.items) |value| {
         var found: bool = true;
 
-        const new_data = try getSortedListByRemovingOne(allocator, v.items);
+        const new_data = try check_for_removing(allocator, value.items);
         defer new_data.deinit();
 
         if (new_data.items.len < 1) {
@@ -142,12 +121,6 @@ pub fn main() !void {
             result += 1;
         }
     }
-
-    // free it
-    for (lists.items) |list| {
-        list.deinit();
-    }
-    lists.deinit();
 
     try stdout.print("result: {d}\n", .{result});
     try bw.flush();
