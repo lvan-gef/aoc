@@ -37,7 +37,7 @@ pub fn main() !void {
     defer lists.deinit();
     defer {
         for (lists.items) |list| {
-        list.deinit();
+            list.deinit();
         }
     }
 
