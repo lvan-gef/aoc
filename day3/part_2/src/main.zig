@@ -1,109 +1,46 @@
 const std = @import("std");
+const data = @embedFile("input.txt");
 
-fn getLines(allocator: std.mem.Allocator, filename: []const u8) !std.ArrayList([]u8) {
-    // Open the file
-    const file = try std.fs.cwd().openFile(filename, .{});
-    defer file.close();
+fn mul(win: []const u8) !usize {
+    const slice1 = std.mem.sliceTo(win[4..], ',');
+    const lhs = try std.fmt.parseInt(usize, slice1, 0);
 
-    var lines = std.ArrayList([]u8).init(allocator);
-    errdefer {
-        for (lines.items) |line| {
-            allocator.free(line);
-        }
-        lines.deinit();
-    }
+    const slice2 = std.mem.sliceTo(win[5 + slice1.len ..], ')');
+    const rhs = try std.fmt.parseInt(usize, slice2, 0);
 
-    var buf_reader = std.io.bufferedReader(file.reader());
-    var in_stream = buf_reader.reader();
-
-    while (try in_stream.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize))) |line| {
-        try lines.append(line);
-    }
-
-    return lines;
+    return lhs * rhs;
 }
 
-fn get_pattern(input: []u8) u32 {
-    var i: usize = 0;
-    var sum: u32 = 0;
-    var process = true;
+fn get_result() usize {
+    var active: bool = true;
+    var total: usize = 0;
+    var it = std.mem.window(u8, data, 12, 1);
 
-    while (i < input.len) : (i += 1) {
-        if (i + 7 < input.len and std.mem.eql(u8, input[i..i+7], "don't()")) {
-            process = false;
+    while (it.next()) |win| {
+        if (std.mem.eql(u8, win[0..4], "do()")) {
+            active = true;
         }
 
-        if (i + 4 < input.len and std.mem.eql(u8, input[i..i+4], "do()")) {
-            process = true;
+        if (std.mem.eql(u8, win[0..7], "don't()")) {
+            active = false;
         }
 
-        const j = i + 4;
-        if (j >= input.len) break;
-
-        // Find comma position
-        var comma_pos: ?usize = null;
-        var k = j;
-        while (k < input.len and k < j + 4) : (k += 1) {
-            if (input[k] == ',') {
-                comma_pos = k;
-                break;
+        if (std.mem.eql(u8, win[0..4], "mul(")) {
+            if (active) {
+                total += mul(win) catch continue;
             }
         }
-
-        if (comma_pos == null) continue;
-
-        // Parse first number
-        const first_num = std.fmt.parseInt(u32, input[j..comma_pos.?], 10) catch continue;
-
-        // Find closing parenthesis
-        const close_pos = std.mem.indexOfScalarPos(u8, input, comma_pos.? + 1, ')') orelse continue;
-        if (close_pos >= input.len) continue;
-
-        // Parse second number
-        const second_num = std.fmt.parseInt(u32, input[comma_pos.? + 1..close_pos], 10) catch continue;
-
-        if (process) {
-            sum += first_num * second_num;
-        }
-
-        i = close_pos;
     }
 
-    return sum;
+    return total;
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
     const stdout_file = std.io.getStdOut().writer();
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
 
-    if (std.os.argv.len != 2) {
-        try stdout.print("Expect 1 argument got: {d}\n", .{std.os.argv.len - 1});
-
-        try bw.flush();
-        std.process.exit(1);
-    }
-
-    var args = std.process.args();
-    _ = args.skip();
-
-    const lines = try getLines(allocator, args.next().?);
-    defer lines.deinit();
-    defer {
-        for (lines.items) |line| {
-            allocator.free(line);
-        }
-    }
-
-    var result: u32 = 0;
-    for (0..lines.items.len) |i| {
-        result += get_pattern(lines.items[i]);
-    }
-
+    const result = get_result();
     try stdout.print("result: {d}\n", .{result});
     try bw.flush();
 }
