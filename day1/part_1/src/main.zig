@@ -1,7 +1,7 @@
 const std = @import("std");
 const data = @embedFile("input.txt");
 
-fn get_numbers(allocator: std.mem.Allocator) !usize {
+fn get_result(allocator: std.mem.Allocator) !usize {
     var lhs = std.ArrayList(i32).init(allocator);
     defer lhs.deinit();
 
@@ -37,7 +37,7 @@ pub fn main() !void {
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
 
-    const result = try get_numbers(allocator);
+    const result = try get_result(allocator);
 
     try stdout.print("result: {d}\n", .{result});
     try bw.flush();
