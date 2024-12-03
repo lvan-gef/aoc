@@ -19,7 +19,6 @@ fn readNumberPairs(allocator: std.mem.Allocator) !usize {
 
     var result: usize = 0;
     for (lhs.items) |l_value| {
-        // const count = std.mem.count(lists.rhs.items, |x| x == value);
         var count: usize = 0;
         for (rhs.items) |r_value| {
             if (r_value == l_value) {
