@@ -1,5 +1,6 @@
 const std = @import("std");
 const data = @embedFile("input.txt");
+const stdout = std.io.getStdOut().writer();
 
 fn mul(win: []const u8) !usize {
     const slice1 = std.mem.sliceTo(win[4..], ',');
@@ -25,12 +26,7 @@ fn get_result() usize {
 }
 
 pub fn main() !void {
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
-
     const result: usize = get_result();
 
     try stdout.print("result: {d}\n", .{result});
-    try bw.flush();
 }

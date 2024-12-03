@@ -1,5 +1,6 @@
 const std = @import("std");
 const data = @embedFile("input.txt");
+const stdout = std.io.getStdOut().writer();
 
 fn get_result(allocator: std.mem.Allocator) !usize {
     var lhs = std.ArrayList(i32).init(allocator);
@@ -33,12 +34,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
-
     const result = try get_result(allocator);
 
     try stdout.print("result: {d}\n", .{result});
-    try bw.flush();
 }

@@ -1,5 +1,6 @@
 const std = @import("std");
 const data = @embedFile("input.txt");
+const stdout = std.io.getStdOut().writer();
 
 pub fn check_for_removing(allocator: std.mem.Allocator, list: []const i32) !std.ArrayList(i32) {
     var empty = std.ArrayList(i32).init(allocator);
@@ -86,10 +87,6 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
-
     const lists = try get_numbers(allocator);
     defer lists.deinit();
     defer {
@@ -123,5 +120,4 @@ pub fn main() !void {
     }
 
     try stdout.print("result: {d}\n", .{result});
-    try bw.flush();
 }
