@@ -1,48 +1,30 @@
 const std = @import("std");
+const data = @embedFile("input.txt");
 
-fn readNumberPairs(allocator: std.mem.Allocator, filename: []const u8) !std.ArrayList(std.ArrayList(i32)) {
-    // Create the lists
-    var lhs = std.ArrayList(std.ArrayList(i32)).init(allocator);
+fn get_numbers(allocator: std.mem.Allocator) !std.ArrayList(std.ArrayList(i32)) {
+    var list = std.ArrayList(std.ArrayList(i32)).init(allocator);
     errdefer {
-        for (lhs.items) |item| {
+        for (list.items) |item| {
             item.deinit();
         }
-        lhs.deinit();
+        list.deinit();
     }
 
-    // Open the file
-    const file = try std.fs.cwd().openFile(filename, .{});
-    defer file.close();
+    var it = std.mem.tokenizeScalar(u8, data, '\n');
+    while (it.next()) |token| {
+        var sub_list = std.ArrayList(i32).init(allocator);
+        errdefer sub_list.deinit();
 
-    // Create a buffered reader
-    var buf_reader = std.io.bufferedReader(file.reader());
-    var in_stream = buf_reader.reader();
-
-    var line = std.ArrayList(u8).init(allocator);
-    defer line.deinit();
-
-    while (true) {
-        in_stream.readUntilDelimiterArrayList(&line, '\n', 1024) catch |err| switch (err) {
-            error.EndOfStream => break,
-            else => return err,
-        };
-
-        var iter = std.mem.splitScalar(u8, line.items, ' ');
-        var rhs = std.ArrayList(i32).init(allocator);
-        errdefer rhs.deinit();
-
-        while (iter.next()) |part| {
-            if (part.len > 0) {
-                const num = try std.fmt.parseInt(i32, part, 10);
-                try rhs.append(num);
-            }
+        var values = std.mem.tokenizeScalar(u8, token, ' ');
+        while (values.next()) |value| {
+            const int_value = try std.fmt.parseInt(i32, value, 10);
+            try sub_list.append(int_value);
         }
-        try lhs.append(rhs);
 
-        line.clearRetainingCapacity();
+        try list.append(sub_list);
     }
 
-    return lhs;
+    return list;
 }
 
 pub fn main() !void {
@@ -54,32 +36,27 @@ pub fn main() !void {
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
 
-    if (std.os.argv.len != 2) {
-        try stdout.print("Expect 1 argument got: {d}\n", .{std.os.argv.len - 1});
-
-        try bw.flush();
-        std.process.exit(1);
+    const lists = try get_numbers(allocator);
+    defer lists.deinit();
+    defer {
+        for (lists.items) |list| {
+        list.deinit();
+        }
     }
 
-    var args = std.process.args();
-    _ = args.skip();
-
-    const lists = try readNumberPairs(allocator, args.next().?);
-
     var result: u32 = 0;
-    for (lists.items, 0..) |v, i| {
+    for (lists.items) |value| {
         var found: bool = true;
-        _ = i;
 
         // check if it is sorted
-        if (!std.sort.isSorted(i32, v.items, {}, std.sort.asc(i32))) {
-            if (!std.sort.isSorted(i32, v.items, {}, std.sort.desc(i32))) {
+        if (!std.sort.isSorted(i32, value.items, {}, std.sort.asc(i32))) {
+            if (!std.sort.isSorted(i32, value.items, {}, std.sort.desc(i32))) {
                 continue;
             }
         }
 
-        for (1..v.items.len) |index| {
-            const tmp: u32 = @abs(v.items[index - 1] - v.items[index]);
+        for (1..value.items.len) |index| {
+            const tmp: u32 = @abs(value.items[index - 1] - value.items[index]);
             if (tmp < 1 or tmp > 3) {
                 found = false;
                 break;
@@ -90,12 +67,6 @@ pub fn main() !void {
             result += 1;
         }
     }
-
-    // free it
-    for (lists.items) |list| {
-        list.deinit();
-    }
-    lists.deinit();
 
     try stdout.print("result: {d}\n", .{result});
     try bw.flush();
