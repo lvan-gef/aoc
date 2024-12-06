@@ -99,8 +99,12 @@ fn parseReport(map: SortedMap(usize), report: std.ArrayList(usize)) usize {
 fn getResult(allocator: std.mem.Allocator) !usize {
     var report = false;
     var result: usize = 0;
+
     var map = SortedMap(usize).init(allocator);
     defer map.deinit();
+
+    var values = std.ArrayList(usize).init(allocator);
+    defer values.deinit();
 
     var it = std.mem.splitScalar(u8, data, '\n');
     while (it.next()) |token| {
@@ -114,8 +118,7 @@ fn getResult(allocator: std.mem.Allocator) !usize {
         }
 
         if (report) {
-            var values = std.ArrayList(usize).init(allocator);
-            defer values.deinit();
+            values.clearRetainingCapacity();
 
             var report_it = std.mem.tokenizeScalar(u8, token, ',');
             while (report_it.next()) |value| {
