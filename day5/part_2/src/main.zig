@@ -87,7 +87,7 @@ fn isValidReport(map: SortedMap(usize), report: *std.ArrayList(usize)) bool {
         }
 
         if (!map.containsValue(value, report.items[index + 1])) {
-                return false;
+            return false;
         }
     }
 
@@ -104,13 +104,10 @@ fn fixBroken(map: SortedMap(usize), report: *std.ArrayList(usize), index: usize)
         var counter = index;
         while (counter < report.items.len - 1) : (counter += 1) {
             if (!map.containsValue(report.items[counter], report.items[counter + 1])) {
-                // Swap elements
                 const tmp = report.items[counter];
                 report.items[counter] = report.items[counter + 1];
                 report.items[counter + 1] = tmp;
                 made_swap = true;
-
-                std.debug.print("swap: {} {}\n", .{report.items[counter], report.items[counter + 1]});
 
                 if (isValidReport(map, &report.*)) {
                     return report.items[report.items.len / 2];
@@ -137,8 +134,12 @@ fn parseReport(map: SortedMap(usize), report: *std.ArrayList(usize)) !usize {
 fn getResult(allocator: std.mem.Allocator) !usize {
     var report = false;
     var result: usize = 0;
+
     var map = SortedMap(usize).init(allocator);
     defer map.deinit();
+
+    var values = std.ArrayList(usize).init(allocator);
+    defer values.deinit();
 
     var it = std.mem.splitScalar(u8, data, '\n');
     while (it.next()) |token| {
@@ -147,13 +148,13 @@ fn getResult(allocator: std.mem.Allocator) !usize {
                 // trailing newline
                 break;
             }
+
             report = true;
             continue;
         }
 
         if (report) {
-            var values = std.ArrayList(usize).init(allocator);
-            defer values.deinit();
+            values.clearRetainingCapacity();
 
             var report_it = std.mem.tokenizeScalar(u8, token, ',');
             while (report_it.next()) |value| {
@@ -167,7 +168,6 @@ fn getResult(allocator: std.mem.Allocator) !usize {
             const rhs = try std.fmt.parseInt(usize, rules_it.next().?, 10);
             try map.insert(lhs, rhs);
         }
-
     }
 
     return result;
