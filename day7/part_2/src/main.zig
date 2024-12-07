@@ -2,20 +2,27 @@ const std = @import("std");
 const data = @embedFile("input.txt");
 const stdout = std.io.getStdOut().writer();
 
+const MAX_NUMBERS = 12;
+const MAX_OPERATIONS = MAX_NUMBERS - 1;
+const POWERS = [_]usize{ 10, 100, 1000, 10000, 100000, 1000000 };
+
 const Operator = enum {
     add,
     multiply,
     concatenate,
 
-    pub fn apply(self: Operator, a: usize, b: usize) usize {
+pub fn apply(self: Operator, a: usize, b: usize) usize {
         return switch (self) {
             .add => a + b,
             .multiply => a * b,
             .concatenate => {
-                var b_buf: [20]u8 = undefined;
-                const b_str = std.fmt.bufPrint(&b_buf, "{d}", .{b}) catch return 0;
-                const multiplier = std.math.pow(usize, 10, b_str.len);
-                return (a * multiplier) + b;
+                var b_copy: usize = b;
+                var digits: usize = 1;
+                while (b_copy >= 10) : (b_copy /= 10) {
+                    digits += 1;
+                }
+
+                return (a * POWERS[digits - 1]) + b;
             },
         };
     }
@@ -68,7 +75,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var inputs = std.ArrayList(usize).init(allocator);
+    var inputs = try std.ArrayList(usize).initCapacity(allocator, MAX_NUMBERS);
     defer inputs.deinit();
 
     var result: usize = 0;
