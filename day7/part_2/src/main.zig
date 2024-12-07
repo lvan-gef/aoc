@@ -11,7 +11,7 @@ const Operator = enum {
     multiply,
     concatenate,
 
-pub fn apply(self: Operator, a: usize, b: usize) usize {
+    pub fn apply(self: Operator, a: usize, b: usize) usize {
         return switch (self) {
             .add => a + b,
             .multiply => a * b,
@@ -28,30 +28,20 @@ pub fn apply(self: Operator, a: usize, b: usize) usize {
     }
 };
 
-fn findSolution(allocator: std.mem.Allocator, target: usize, numbers: []const usize) !bool {
+fn findSolution(operators: []Operator, target: usize, numbers: []const usize) bool {
     const num_operators = numbers.len - 1;
-
-    var operators = try allocator.alloc(Operator, num_operators);
-    defer allocator.free(operators);
-
     const max_combinations = std.math.pow(usize, 3, num_operators);
     var combination: usize = 0;
 
     while (combination < max_combinations) : (combination += 1) {
-        var temp = combination;
-        for (operators, 0..) |_, i| {
-            const op_value = temp % 3;
-            operators[i] = switch (op_value) {
-                0 => .add,
-                1 => .multiply,
-                2 => .concatenate,
-                else => unreachable,
-            };
-            temp /= 3;
+        const temp = combination;
+        for (operators[0..num_operators], 0..) |*op, i| {
+            _ = i;
+            op.* = @enumFromInt(temp % 3);
         }
 
         var result = numbers[0];
-        for (operators, 0..) |op, i| {
+        for (operators[0..num_operators], 0..) |op, i| {
             result = op.apply(result, numbers[i + 1]);
         }
 
@@ -78,6 +68,8 @@ pub fn main() !void {
     var inputs = try std.ArrayList(usize).initCapacity(allocator, MAX_NUMBERS);
     defer inputs.deinit();
 
+    var operations: [MAX_OPERATIONS]Operator = undefined;
+
     var result: usize = 0;
     var it = std.mem.tokenizeScalar(u8, data, '\n');
     while (it.next()) |line| {
@@ -90,7 +82,8 @@ pub fn main() !void {
             try inputs.append(try std.fmt.parseInt(usize, token, 10));
         }
 
-        if (try findSolution(allocator, target, inputs.items)) {
+        std.debug.assert(inputs.items.len <= MAX_NUMBERS);
+        if (findSolution(&operations, target, inputs.items)) {
             result += target;
         }
     }
