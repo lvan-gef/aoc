@@ -34,9 +34,10 @@ fn findSolution(operators: []Operator, target: usize, numbers: []const usize) bo
     var combination: usize = 0;
 
     while (combination < max_combinations) : (combination += 1) {
-        const temp = combination;
+        var temp = combination;
         for (operators[0..num_operators]) |*op| {
             op.* = @enumFromInt(temp % 3);
+            temp /= 3;
         }
 
         var result = numbers[0];
