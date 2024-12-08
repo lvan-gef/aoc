@@ -35,8 +35,7 @@ fn findSolution(operators: []Operator, target: usize, numbers: []const usize) bo
 
     while (combination < max_combinations) : (combination += 1) {
         const temp = combination;
-        for (operators[0..num_operators], 0..) |*op, i| {
-            _ = i;
+        for (operators[0..num_operators]) |*op| {
             op.* = @enumFromInt(temp % 3);
         }
 
@@ -74,6 +73,7 @@ pub fn main() !void {
     var it = std.mem.tokenizeScalar(u8, data, '\n');
     while (it.next()) |line| {
         inputs.clearRetainingCapacity();
+
         var tokens = std.mem.tokenizeScalar(u8, line, ' ');
         const nbr = tokens.next().?;
         const target = try std.fmt.parseInt(usize, nbr[0 .. nbr.len - 1], 10);
