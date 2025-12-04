@@ -22,7 +22,6 @@ typedef struct map_size_s {
 } map_size_t;
 
 static size_t check_map(char **map, char **visit, map_size_t *ms, map_size_t *pos);
-static size_t left_rigth(char *line, char **visit, map_size_t *ms, map_size_t *pos);
 static void mapsize(filemap_t *fm, map_size_t *ms);
 static char **create_map(map_size_t *ms);
 static char **setmap(filemap_t *fm, map_size_t *ms);
@@ -67,8 +66,7 @@ int main(int argc, char **argv) {
         ++row;
     }
 
-    // assert(p1_counter == 13);
-    printf("Part: 1: The password is: %d\n", p1_counter);
+    printf("Part: 1: Rolls of paper: %d\n", p1_counter);
     close(fm.fd);
     munmap(fm.buf, fm.size);
     free(map);
@@ -93,47 +91,31 @@ failed:
 }
 
 static size_t check_map(char **map, char **visit, map_size_t *ms, map_size_t *pos) {
-    size_t counter = 0;
-
-    if (map[pos->row][pos->column] == '@') {
-        counter += left_rigth(map[pos->row], visit, ms, pos);
-
-        if (pos->row > 0) {
-            --pos->row;
-            counter += left_rigth(map[pos->row], visit,  ms, pos);
-            ++pos->row;
-        }
-
-        if (pos->row + 1 < ms->row) {
-            ++pos->row;
-            counter += left_rigth(map[pos->row], visit, ms, pos);
-            --pos->row;
-        }
+    if (map[pos->row][pos->column] != '@' || visit[pos->row][pos->column]) {
+        visit[pos->row][pos->column] = '1';
+        return 0;
     }
+
     visit[pos->row][pos->column] = '1';
-
-    printf("%zu\n", counter);
-    return counter < 4 ? 1 : 0;
-}
-
-static size_t left_rigth(char *line, char **visit, map_size_t *ms, map_size_t *pos) {
     size_t counter = 0;
+    for (int dr = -1; dr <= 1; dr++) {
+        for (int dc = -1; dc <= 1; dc++) {
+            if (dr == 0 && dc == 0) {
+                continue;
+            }
 
-    if (pos->column > 0) {
-        if (line[pos->column - 1] == '@' && !visit[pos->row][pos->column - 1]) {
-            ++counter;
+            int new_row = (int)pos->row + dr;
+            int new_col = (int)pos->column + dc;
+            if (new_row >= 0 && new_row < (int)ms->row &&
+                new_col >= 0 && new_col < (int)ms->column) {
+                if (map[new_row][new_col] == '@') {
+                    counter++;
+                }
+            }
         }
-        visit[pos->row][pos->column - 1] = '1';
     }
 
-    if (pos->column + 1 < ms->column) {
-        if (line[pos->column + 1] == '@' && !visit[pos->row][pos->column + 1]) {
-            ++counter;
-        }
-        visit[pos->row][pos->column + 1] = '1';
-    }
-
-    return counter;
+    return counter < 4 ? 1 : 0;
 }
 
 static void mapsize(filemap_t *fm, map_size_t *ms) {
