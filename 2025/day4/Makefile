@@ -1,8 +1,9 @@
 NAME      := main
 
 CC        := clang
-CFLAGS    := -std=c17 -Wall -Wextra -Werror -Wshadow -Wpedantic -Wconversion -Wdouble-promotion
-R_FLAGS   := -DNDEBUG -O3 -march=native -fomit-frame-pointer
+CFLAGS    := -std=c17 -Wall -Wextra -Werror -Wshadow -Wpedantic -Wconversion -Wdouble-promotion -g3
+R_FLAGS   :=
+# R_FLAGS   := -DNDEBUG -O3 -march=native -fomit-frame-pointer
 
 SRC_DIR   := src
 OBJ_DIR   := obj
@@ -21,7 +22,8 @@ all: $(NAME)  ## Build release version (default)
 
 .PHONY: run
 run: all  ## Build release and run
-	./$(NAME) input.txt
+	./$(NAME) simple_input.txt
+	# ./$(NAME) input.txt
 
 .PHONY: clean
 clean:  ## Clean object files
@@ -48,7 +50,8 @@ help:  ## Get help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  ${BLUE}%-15s${NC} %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 $(NAME): $(OBJECTS)
-	$(CC) $(OBJECTS) -s -o $@
+	# $(CC) $(OBJECTS) -s -o $@
+	$(CC) $(OBJECTS) -g3 -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) $(R_FLAGS) -c $< -o $@

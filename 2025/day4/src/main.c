@@ -21,7 +21,8 @@ typedef struct map_size_s {
     unsigned int column;
 } map_size_t;
 
-static size_t check_map(char **map, char **visit, map_size_t *ms, map_size_t *pos);
+static size_t part1(char **map, char **visit, map_size_t *ms, map_size_t *pos);
+static size_t part2(char **map, map_size_t *ms, map_size_t *pos);
 static void mapsize(filemap_t *fm, map_size_t *ms);
 static char **create_map(map_size_t *ms);
 static char **setmap(filemap_t *fm, map_size_t *ms);
@@ -54,22 +55,63 @@ int main(int argc, char **argv) {
         goto failed;
     }
 
+    visit = create_map(&ms);
+    if (!visit) {
+        goto failed;
+    }
+
     int p1_counter = 0;
+    int p2_counter = 0;
     size_t row = 0;
     while (row < ms.row) {
         size_t col = 0;
         while (col < ms.column) {
-            map_size_t cur_pos = {.row = (unsigned int)row, .column = (unsigned int)col};
-            p1_counter += check_map(map, visit, &ms, &cur_pos);
+            map_size_t cur_pos = {.row = (unsigned int)row,
+                                  .column = (unsigned int)col};
+            p1_counter += part1(map, visit, &ms, &cur_pos);
             ++col;
         }
         ++row;
     }
 
+    assert(p1_counter == 13);
     printf("Part: 1: Rolls of paper: %d\n", p1_counter);
+
+    bool changed = true;
+    while (changed) {
+        changed = false;
+
+        row = 0;
+        while (row < ms.row) {
+            size_t col = 0;
+            map_size_t cur_pos = {.row = (unsigned int)row,
+                                  .column = (unsigned int)col};
+            while (col < cur_pos.column) {
+                size_t tmp = part2(map, &ms, &cur_pos);
+                if (tmp < 4) {
+                    changed = true;
+                    row = 0;
+                    p2_counter += tmp;
+                }
+                ++col;
+            }
+
+            if (changed) {
+                cur_pos.row = 0;
+                cur_pos.column = 0;
+            } else {
+                ++row;
+            }
+        }
+    }
+    printf("Part: 2: Rolls of paper: %d\n", p2_counter);
+    assert(p2_counter == 43);
+
     close(fm.fd);
     munmap(fm.buf, fm.size);
-    free(map);
+    free_map(map);
+    free_map(visit);
+    free_map(visit);
 
     return 0;
 
@@ -90,7 +132,7 @@ failed:
     return 2;
 }
 
-static size_t check_map(char **map, char **visit, map_size_t *ms, map_size_t *pos) {
+static size_t part1(char **map, char **visit, map_size_t *ms, map_size_t *pos) {
     if (map[pos->row][pos->column] != '@' || visit[pos->row][pos->column]) {
         visit[pos->row][pos->column] = '1';
         return 0;
@@ -106,8 +148,8 @@ static size_t check_map(char **map, char **visit, map_size_t *ms, map_size_t *po
 
             int new_row = (int)pos->row + dr;
             int new_col = (int)pos->column + dc;
-            if (new_row >= 0 && new_row < (int)ms->row &&
-                new_col >= 0 && new_col < (int)ms->column) {
+            if (new_row >= 0 && new_row < (int)ms->row && new_col >= 0 &&
+                new_col < (int)ms->column) {
                 if (map[new_row][new_col] == '@') {
                     counter++;
                 }
@@ -116,6 +158,33 @@ static size_t check_map(char **map, char **visit, map_size_t *ms, map_size_t *po
     }
 
     return counter < 4 ? 1 : 0;
+}
+
+static map_size_t **part2(char **map, map_size_t *ms, map_size_t *pos) {
+    size_t counter = 0;
+    // for (int dr = -1; dr <= 1; dr++) {
+    //     for (int dc = -1; dc <= 1; dc++) {
+    //         if (dr == 0 && dc == 0) {
+    //             continue;
+    //         }
+    //
+    //         int new_row = (int)pos->row + dr;
+    //         int new_col = (int)pos->column + dc;
+    //         if (new_row >= 0 && new_row < (int)ms->row && new_col >= 0 &&
+    //             new_col < (int)ms->column) {
+    //             if (map[new_row][new_col] == '@') {
+    //                 counter++;
+    //             }
+    //         }
+    //     }
+    // }
+    //
+    // printf("%zu\n", counter);
+    if (counter < 4) {
+        return NULL;
+    }
+
+    return NULL;
 }
 
 static void mapsize(filemap_t *fm, map_size_t *ms) {
