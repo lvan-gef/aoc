@@ -18,8 +18,8 @@ typedef struct range_s {
     unsigned long max;
 } range_t;
 
-static void part1(filemap_t *fm, range_t *nbrs, size_t max);
-static void part2(range_t *nbrs1, size_t range, range_t *nbrs2);
+static void part1(filemap_t *fm, const range_t *nbrs, size_t max);
+static void part2(range_t *nbrs1, const size_t range, range_t *nbrs2);
 static size_t count_elements(filemap_t *fm);
 static void set_nbrs(filemap_t *fm, range_t *nbrs);
 static void read_file(filemap_t *fm);
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-static void part1(filemap_t *fm, range_t *nbrs, size_t max) {
+static void part1(filemap_t *fm, const range_t *nbrs, size_t max) {
     size_t counter = 0;
     char *buf = fm->buf;
     while (*buf) {
@@ -75,7 +75,7 @@ static void part1(filemap_t *fm, range_t *nbrs, size_t max) {
         memcpy(line, buf, len);
         line[len] = '\0';
 
-        char *dash = memchr(buf, '-', len);
+        const char *dash = memchr(buf, '-', len);
         if (dash) {
             buf = c + 1;
             continue;
@@ -96,7 +96,7 @@ static void part1(filemap_t *fm, range_t *nbrs, size_t max) {
     printf("Part: 1: Available fresh ingredient IDs: %zu\n", counter);
 }
 
-static void part2(range_t *nbrs1, size_t range, range_t *nbrs2) {
+static void part2(const range_t *nbrs1, size_t range, range_t *nbrs2) {
     size_t merged_count = 1;
     nbrs2[0] = nbrs1[0];
 
@@ -164,7 +164,7 @@ static size_t count_elements(filemap_t *fm) {
         memcpy(line, buf, len);
         line[len] = '\0';
 
-        char *dash = memchr(buf, '-', len);
+        const char *dash = memchr(buf, '-', len);
         if (!dash) {
             break;
         }
@@ -187,7 +187,7 @@ static void set_nbrs(filemap_t *fm, range_t *nbrs) {
         memcpy(line, buf, len);
         line[len] = '\0';
 
-        char *dash = memchr(buf, '-', len);
+        const char *dash = memchr(buf, '-', len);
         if (!dash) {
             break;
         }
