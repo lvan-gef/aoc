@@ -50,10 +50,10 @@ int main(int argc, char **argv) {
         close(fm.fd);
         munmap(fm.buf, fm.size);
         free(nbrs1);
+        return 3;
     }
 
     set_nbrs(&fm, nbrs1);
-
     part1(&fm, nbrs1, max);
     part2(nbrs1, max, nbrs2);
 
