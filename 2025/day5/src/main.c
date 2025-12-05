@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
         char *endptr;
         unsigned long nbr = strtoul(line, &endptr, 10);
         for (size_t index = 0; index < max; ++index) {
-            if (nbr > nbrs[index].min && nbr < nbrs[index].max) {
+            if (nbr >= nbrs[index].min && nbr <= nbrs[index].max) {
                 ++p1_counter;
                 break;
             }
