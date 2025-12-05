@@ -19,7 +19,7 @@ typedef struct range_s {
 } range_t;
 
 static void part1(filemap_t *fm, const range_t *nbrs, size_t max);
-static void part2(range_t *nbrs1, const size_t range, range_t *nbrs2);
+static void part2(const range_t *nbrs1, size_t range, range_t *nbrs2);
 static size_t count_elements(filemap_t *fm);
 static void set_nbrs(filemap_t *fm, range_t *nbrs);
 static void read_file(filemap_t *fm);
@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Failed calloc\n");
         close(fm.fd);
         munmap(fm.buf, fm.size);
+        return 3;
     }
 
     range_t *nbrs2 = (range_t *)calloc(max + 1, sizeof(*nbrs1));
@@ -50,7 +51,7 @@ int main(int argc, char **argv) {
         close(fm.fd);
         munmap(fm.buf, fm.size);
         free(nbrs1);
-        return 3;
+        return 4;
     }
 
     set_nbrs(&fm, nbrs1);
@@ -192,7 +193,6 @@ static void set_nbrs(filemap_t *fm, range_t *nbrs) {
             break;
         }
 
-        len = (size_t)(dash - buf);
         char *endptr;
         unsigned long min = strtoul(buf, &endptr, 10);
         unsigned long max = strtoul(dash + 1, &endptr, 10);
