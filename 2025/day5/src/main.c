@@ -18,6 +18,8 @@ typedef struct range_s {
     unsigned long max;
 } range_t;
 
+static void part1(filemap_t *fm, range_t *nbrs, size_t max);
+static void part2(range_t *nbrs1, size_t range, range_t *nbrs2);
 static size_t count_elements(filemap_t *fm);
 static void set_nbrs(filemap_t *fm, range_t *nbrs);
 static void read_file(filemap_t *fm);
@@ -35,17 +37,39 @@ int main(int argc, char **argv) {
     }
 
     size_t max = count_elements(&fm);
-    range_t *nbrs = (range_t *)calloc(max + 1, sizeof(*nbrs));
-    if (!nbrs) {
+    range_t *nbrs1 = (range_t *)calloc(max + 1, sizeof(*nbrs1));
+    if (!nbrs1) {
         fprintf(stderr, "Failed calloc\n");
-        goto failed;
+        close(fm.fd);
+        munmap(fm.buf, fm.size);
     }
-    set_nbrs(&fm, nbrs);
 
-    size_t p1_counter = 0;
-    char *buf = fm.buf;
+    range_t *nbrs2 = (range_t *)calloc(max + 1, sizeof(*nbrs1));
+    if (!nbrs2) {
+        fprintf(stderr, "Failed calloc\n");
+        close(fm.fd);
+        munmap(fm.buf, fm.size);
+        free(nbrs1);
+    }
+
+    set_nbrs(&fm, nbrs1);
+
+    part1(&fm, nbrs1, max);
+    part2(nbrs1, max, nbrs2);
+
+    close(fm.fd);
+    munmap(fm.buf, fm.size);
+    free(nbrs1);
+    free(nbrs2);
+
+    return 0;
+}
+
+static void part1(filemap_t *fm, range_t *nbrs, size_t max) {
+    size_t counter = 0;
+    char *buf = fm->buf;
     while (*buf) {
-        char *c = memchr(buf, '\n', fm.size - (size_t)(buf - fm.buf));
+        char *c = memchr(buf, '\n', fm->size - (size_t)(buf - fm->buf));
         size_t len = (size_t)(c - buf);
         char line[len + 1];
         memcpy(line, buf, len);
@@ -61,7 +85,7 @@ int main(int argc, char **argv) {
         unsigned long nbr = strtoul(line, &endptr, 10);
         for (size_t index = 0; index < max; ++index) {
             if (nbr >= nbrs[index].min && nbr <= nbrs[index].max) {
-                ++p1_counter;
+                ++counter;
                 break;
             }
         }
@@ -69,22 +93,64 @@ int main(int argc, char **argv) {
         buf = c + 1;
     }
 
-    printf("Part: 1: Available fresh ingredient IDs: %zu\n", p1_counter);
-    close(fm.fd);
-    free(nbrs);
-    munmap(fm.buf, fm.size);
+    printf("Part: 1: Available fresh ingredient IDs: %zu\n", counter);
+}
 
-    return 0;
+static void part2(range_t *nbrs1, size_t range, range_t *nbrs2) {
+    size_t merged_count = 1;
+    nbrs2[0] = nbrs1[0];
 
-failed:
+    for (size_t index = 1; index < range; ++index) {
+        range_t new_range = nbrs1[index];
+        int merged = 0;
 
-    close(fm.fd);
-    munmap(fm.buf, fm.size);
-    if (nbrs) {
-        free(nbrs);
+        for (size_t sub_index = 0; sub_index < merged_count; ++sub_index) {
+            if (new_range.min <= nbrs2[sub_index].max + 1 &&
+                new_range.max + 1 >= nbrs2[sub_index].min) {
+                if (new_range.min < nbrs2[sub_index].min) {
+                    nbrs2[sub_index].min = new_range.min;
+                }
+
+                if (new_range.max > nbrs2[sub_index].max) {
+                    nbrs2[sub_index].max = new_range.max;
+                }
+                merged = 1;
+
+                for (size_t next_index = sub_index + 1;
+                     next_index < merged_count; ++next_index) {
+                    if (nbrs2[sub_index].min <= nbrs2[next_index].max + 1 &&
+                        nbrs2[sub_index].max + 1 >= nbrs2[next_index].min) {
+                        if (nbrs2[next_index].min < nbrs2[sub_index].min) {
+                            nbrs2[sub_index].min = nbrs2[next_index].min;
+                        }
+
+                        if (nbrs2[next_index].max > nbrs2[sub_index].max) {
+                            nbrs2[sub_index].max = nbrs2[next_index].max;
+                        }
+
+                        for (size_t m = next_index; m < merged_count - 1; m++) {
+                            nbrs2[m] = nbrs2[m + 1];
+                        }
+                        merged_count--;
+                        next_index--;
+                    }
+                }
+                break;
+            }
+        }
+
+        if (!merged) {
+            nbrs2[merged_count] = new_range;
+            merged_count++;
+        }
     }
 
-    return 1;
+    size_t counter = 0;
+    for (size_t i = 0; i < merged_count; ++i) {
+        counter += (nbrs2[i].max - nbrs2[i].min + 1);
+    }
+
+    printf("Part: 2: Fresh ingredient IDs          : %zu\n", counter);
 }
 
 static size_t count_elements(filemap_t *fm) {
@@ -113,6 +179,7 @@ static size_t count_elements(filemap_t *fm) {
 static void set_nbrs(filemap_t *fm, range_t *nbrs) {
     size_t index = 0;
     char *buf = fm->buf;
+
     while (*buf) {
         char *c = memchr(buf, '\n', fm->size - (size_t)(buf - fm->buf));
         size_t len = (size_t)(c - buf);
