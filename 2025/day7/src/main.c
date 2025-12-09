@@ -18,6 +18,7 @@ typedef struct filemap_s {
 typedef struct map_s {
     size_t row;
     size_t col;
+    char **grid;
 } map_t;
 
 typedef struct node_s {
@@ -32,13 +33,13 @@ typedef struct queue_s {
     bool **visited;
 } queue_t;
 
-static size_t part1(char **grid, queue_t *queue, const map_t *map);
-static size_t part2(char **grid, queue_t *queue, const map_t *map);
+static size_t part1(const map_t *map, queue_t *queue);
+static size_t part2(const map_t *map, queue_t *queue);
 static void get_size(const filemap_t *fm, map_t *map);
-static char **create_map(const filemap_t *fm, const map_t *map);
-static bool **create_visited(const filemap_t *fm, const map_t *map);
+static bool init(const filemap_t *fm, map_t *map, queue_t *queue);
+static void get_start_pos(const map_t *map, node_t *node);
 static void reset_queue(queue_t *queue, const map_t *map);
-static void free_prog(filemap_t *fm, char **grid, queue_t *queue);
+static void free_prog(filemap_t *fm, map_t *map, queue_t *queue);
 static void free_grid(char **grid);
 static void free_queue(queue_t *queue);
 static void free_visited(bool **visited);
@@ -59,62 +60,32 @@ int main(int argc, char **argv) {
     map_t map = {0};
     get_size(&fm, &map);
 
-    char **grid = create_map(&fm, &map);
-    if (!grid) {
-        free_prog(&fm, grid, NULL);
+
+    queue_t queue = {0};
+    if (!init(&fm, &map, &queue)) {
+        free_prog(&fm, &map, &queue);
         return 3;
     }
 
-    queue_t queue = {0};
-    queue.visited = create_visited(&fm, &map);
-    if (!queue.visited) {
-        free_prog(&fm, grid, &queue);
-        return 4;
-    }
-
-    queue.nodes = calloc(map.row * map.col * 2 + 1, sizeof(*queue.nodes));
-    if (!queue.nodes) {
-        free_prog(&fm, grid, &queue);
-        return 5;
-    }
-
-    size_t result1 = part1(grid, &queue, &map);
+    size_t result1 = part1(&map, &queue);
 
     reset_queue(&queue, &map);
-    size_t result2 = part2(grid, &queue, &map);
+    size_t result2 = part2(&map, &queue);
 
     printf("Part: 1: Beam splitting: %zu\n", result1);
     printf("Part: 2: Beam timelines: %zu\n", result2);
-    free_prog(&fm, grid, &queue);
+    free_prog(&fm, &map, &queue);
 
     return 0;
 }
 
-static size_t part1(char **grid, queue_t *queue, const map_t *map) {
-    size_t row = 0;
+static size_t part1(const map_t *map, queue_t *queue) {
     node_t start = {0};
 
-    // find start pos
-    while (row < map->row) {
-        size_t col = 0;
-        while (col < map->col) {
-            if (grid[row][col] == 'S') {
-                start.row = (ssize_t)row;
-                start.col = (ssize_t)col;
-                break;
-            }
-            ++col;
-        }
-
-        if (start.row || start.col) {
-            queue->visited[start.row][start.col] = true;
-            queue->nodes[queue->tail] = start;
-            ++queue->tail;
-            break;
-        }
-
-        ++row;
-    }
+    get_start_pos(map, &start);
+    queue->visited[start.row][start.col] = true;
+    queue->nodes[queue->tail] = start;
+    ++queue->tail;
 
     size_t result = 0;
     while (queue->head != queue->tail) {
@@ -125,7 +96,7 @@ static size_t part1(char **grid, queue_t *queue, const map_t *map) {
         ssize_t c = cur.col;
 
         while ((size_t)r < map->row) {
-            if (grid[r][c] == '^') {
+            if (map->grid[r][c] == '^') {
                 if (!queue->visited[r][c]) {
                     queue->visited[r][c] = true;
                     ++result;
@@ -153,30 +124,13 @@ static size_t part1(char **grid, queue_t *queue, const map_t *map) {
     return result;
 }
 
-static size_t part2(char **grid, queue_t *queue, const map_t *map) {
-    size_t row = 0;
+static size_t part2(const map_t *map, queue_t *queue) {
     node_t start = {0};
 
-    while (row < map->row) {
-        size_t col = 0;
-        while (col < map->col) {
-            if (grid[row][col] == 'S') {
-                start.row = (ssize_t)row;
-                start.col = (ssize_t)col;
-                break;
-            }
-            ++col;
-        }
-
-        if (start.row || start.col) {
-            queue->visited[start.row][start.col] = true;
-            queue->nodes[queue->tail] = start;
-            ++queue->tail;
-            break;
-        }
-
-        ++row;
-    }
+    get_start_pos(map, &start);
+    queue->visited[start.row][start.col] = true;
+    queue->nodes[queue->tail] = start;
+    ++queue->tail;
 
     size_t result = 0;
     while (queue->head != queue->tail) {
@@ -187,7 +141,7 @@ static size_t part2(char **grid, queue_t *queue, const map_t *map) {
         ssize_t c = cur.col;
 
         while ((size_t)r < map->row) {
-            if (grid[r][c] == '^') {
+            if (map->grid[r][c] == '^') {
                 if (!queue->visited[r][c]) {
                     queue->visited[r][c] = true;
                     ++result;
@@ -234,10 +188,20 @@ static void get_size(const filemap_t *fm, map_t *map) {
     }
 }
 
-static char **create_map(const filemap_t *fm, const map_t *map) {
-    char **grid = calloc(map->row + 1, sizeof(*grid));
-    if (!grid) {
-        return NULL;
+static bool init(const filemap_t *fm, map_t *map, queue_t *queue) {
+    queue->nodes = calloc(map->row * map->col * 2 + 1, sizeof(*queue->nodes));
+    if (!queue->nodes) {
+        return false;
+    }
+
+    map->grid = calloc(map->row + 1, sizeof(*map->grid));
+    if (!map->grid) {
+        goto failed;
+    }
+
+    queue->visited = calloc(map->row + 1, sizeof(*queue->visited));
+    if (!queue->visited) {
+        goto failed;
     }
 
     size_t index = 0;
@@ -245,49 +209,57 @@ static char **create_map(const filemap_t *fm, const map_t *map) {
     while (*buf) {
         char *c = memchr(buf, '\n', fm->size - (size_t)(buf - fm->buf));
         if (!c) {
-            return grid;
+            return true;
         }
 
-        grid[index] = calloc(map->col + 1, sizeof(**grid));
-        if (!grid[index]) {
-            free_grid(grid);
-            return NULL;
+        map->grid[index] = calloc(map->col + 1, sizeof(**map->grid));
+        if (!map->grid[index]) {
+            goto failed;
         }
+        strncpy(map->grid[index], buf, map->col);
 
-        strncpy(grid[index], buf, map->col);
+        queue->visited[index] = calloc(map->col + 1, sizeof(**queue->visited));
+        if (!queue->visited[index]) {
+            goto failed;
+        }
 
         buf = c + 1;
         ++index;
     }
 
-    return grid;
+    return true;
+failed:
+    free(queue->nodes);
+    queue->nodes = NULL;
+
+    if (map->grid) {
+        free_grid(map->grid);
+        map->grid = NULL;
+    }
+
+    if (queue->visited) {
+        free_visited(queue->visited);
+        queue->visited = NULL;
+    }
+
+    return false;
 }
 
-static bool **create_visited(const filemap_t *fm, const map_t *map) {
-    bool **grid = calloc(map->row + 1, sizeof(*grid));
-    if (!grid) {
-        return NULL;
-    }
-
-    size_t index = 0;
-    const char *buf = fm->buf;
-    while (*buf) {
-        char *c = memchr(buf, '\n', fm->size - (size_t)(buf - fm->buf));
-        if (!c) {
-            return grid;
+static void get_start_pos(const map_t *map, node_t *node) {
+    size_t row = 0;
+    while (row < map->row) {
+        size_t col = 0;
+        while (col < map->col) {
+            if (map->grid[row][col] == 'S') {
+                node->row = (ssize_t)row;
+                node->col = (ssize_t)col;
+                return;
+            }
+            ++col;
         }
 
-        grid[index] = calloc(map->col + 1, sizeof(**grid));
-        if (!grid[index]) {
-            free_visited(grid);
-            return NULL;
-        }
-
-        buf = c + 1;
-        ++index;
+        ++row;
     }
-
-    return grid;
 }
 
 static void reset_queue(queue_t *queue, const map_t *map) {
@@ -305,13 +277,13 @@ static void reset_queue(queue_t *queue, const map_t *map) {
     }
 }
 
-static void free_prog(filemap_t *fm, char **grid, queue_t *queue) {
+static void free_prog(filemap_t *fm, map_t *map, queue_t *queue) {
     if (fm) {
         close(fm->fd);
         munmap(fm->buf, fm->size);
     }
 
-    free_grid(grid);
+    free_grid(map->grid);
     free_queue(queue);
 }
 
