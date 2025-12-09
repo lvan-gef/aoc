@@ -33,9 +33,11 @@ typedef struct queue_s {
 } queue_t;
 
 static size_t part1(char **grid, queue_t *queue, const map_t *map);
+static size_t part2(char **grid, queue_t *queue, const map_t *map);
 static void get_size(const filemap_t *fm, map_t *map);
 static char **create_map(const filemap_t *fm, const map_t *map);
 static bool **create_visited(const filemap_t *fm, const map_t *map);
+static void reset_queue(queue_t *queue, const map_t *map);
 static void free_prog(filemap_t *fm, char **grid, queue_t *queue);
 static void free_grid(char **grid);
 static void free_queue(queue_t *queue);
@@ -69,15 +71,20 @@ int main(int argc, char **argv) {
         free_prog(&fm, grid, &queue);
         return 4;
     }
+
     queue.nodes = calloc(map.row * map.col * 2 + 1, sizeof(*queue.nodes));
     if (!queue.nodes) {
         free_prog(&fm, grid, &queue);
         return 5;
     }
 
-    size_t result = part1(grid, &queue, &map);
+    size_t result1 = part1(grid, &queue, &map);
 
-    printf("Part: 1: Beam splitting: %zu\n", result);
+    reset_queue(&queue, &map);
+    size_t result2 = part2(grid, &queue, &map);
+
+    printf("Part: 1: Beam splitting: %zu\n", result1);
+    printf("Part: 2: Beam timelines: %zu\n", result2);
     free_prog(&fm, grid, &queue);
 
     return 0;
@@ -88,6 +95,68 @@ static size_t part1(char **grid, queue_t *queue, const map_t *map) {
     node_t start = {0};
 
     // find start pos
+    while (row < map->row) {
+        size_t col = 0;
+        while (col < map->col) {
+            if (grid[row][col] == 'S') {
+                start.row = (ssize_t)row;
+                start.col = (ssize_t)col;
+                break;
+            }
+            ++col;
+        }
+
+        if (start.row || start.col) {
+            queue->visited[start.row][start.col] = true;
+            queue->nodes[queue->tail] = start;
+            ++queue->tail;
+            break;
+        }
+
+        ++row;
+    }
+
+    size_t result = 0;
+    while (queue->head != queue->tail) {
+        node_t cur = queue->nodes[queue->head];
+        ++queue->head;
+
+        ssize_t r = cur.row;
+        ssize_t c = cur.col;
+
+        while ((size_t)r < map->row) {
+            if (grid[r][c] == '^') {
+                if (!queue->visited[r][c]) {
+                    queue->visited[r][c] = true;
+                    ++result;
+                }
+
+                if (c - 1 >= 0 && !queue->visited[r][c - 1]) {
+                    node_t left = {.row = r, .col = c - 1};
+                    queue->nodes[queue->tail] = left;
+                    ++queue->tail;
+                    queue->visited[r][c - 1] = true;
+                }
+
+                if ((size_t)(c + 1) < map->col && !queue->visited[r][c + 1]) {
+                    node_t right = {.row = r, .col = c + 1};
+                    queue->nodes[queue->tail] = right;
+                    ++queue->tail;
+                    queue->visited[r][c + 1] = true;
+                }
+                break;
+            }
+            ++r;
+        }
+    }
+
+    return result;
+}
+
+static size_t part2(char **grid, queue_t *queue, const map_t *map) {
+    size_t row = 0;
+    node_t start = {0};
+
     while (row < map->row) {
         size_t col = 0;
         while (col < map->col) {
@@ -219,6 +288,21 @@ static bool **create_visited(const filemap_t *fm, const map_t *map) {
     }
 
     return grid;
+}
+
+static void reset_queue(queue_t *queue, const map_t *map) {
+    queue->head = 0;
+    queue->tail = 0;
+
+    size_t row = 0;
+    while (row < map->row) {
+        size_t col = 0;
+        while (col < map->col) {
+            queue->visited[row][col] = false;
+            ++col;
+        }
+        ++row;
+    }
 }
 
 static void free_prog(filemap_t *fm, char **grid, queue_t *queue) {
