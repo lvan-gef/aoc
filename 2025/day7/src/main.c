@@ -60,7 +60,6 @@ int main(int argc, char **argv) {
     map_t map = {0};
     get_size(&fm, &map);
 
-
     queue_t queue = {0};
     if (!init(&fm, &map, &queue)) {
         free_prog(&fm, &map, &queue);
