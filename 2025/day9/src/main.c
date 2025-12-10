@@ -20,7 +20,6 @@ typedef struct pos_s {
     size_t col;
 } pos_t;
 
-
 static size_t part1(const pos_t *pos, size_t size);
 static size_t get_size(const filemap_t *fm);
 static pos_t *init(const filemap_t *fm, size_t size);
@@ -62,12 +61,14 @@ static size_t part1(const pos_t *pos, size_t size) {
     while (index < size) {
         size_t sub_index = index + 1;
         while (sub_index < size) {
-            long int row_dif = ((long int)pos[index].row - (long int)pos[sub_index].row) + 1;
+            long int row_dif =
+                ((long int)pos[index].row - (long int)pos[sub_index].row) + 1;
             if (row_dif < 0) {
                 row_dif = -row_dif;
             }
 
-            long int col_dif = ((long int)pos[index].col - (long int)pos[sub_index].col) + 1;
+            long int col_dif =
+                ((long int)pos[index].col - (long int)pos[sub_index].col) + 1;
             if (col_dif < 0) {
                 col_dif = -col_dif;
             }
