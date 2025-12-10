@@ -20,17 +20,11 @@ typedef struct pos_s {
     size_t col;
 } pos_t;
 
-typedef struct map_s {
-    pos_t pos;
-    char **grid;
-} map_t;
 
-static size_t part1(const map_t *map);
-static size_t rectangel(const map_t *map, pos_t *pos);
-static void get_size(const filemap_t *fm, map_t *map);
-static bool init(const filemap_t *fm, map_t *map);
-static void free_prog(filemap_t *fm, map_t *map);
-static void free_grid(char **grid);
+static size_t part1(const pos_t *pos, size_t size);
+static size_t get_size(const filemap_t *fm);
+static pos_t *init(const filemap_t *fm, size_t size);
+static void free_prog(filemap_t *fm, pos_t *pos);
 static void read_file(filemap_t *fm);
 
 int main(int argc, char **argv) {
@@ -45,111 +39,72 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    map_t map = {0};
-    get_size(&fm, &map);
-
-    if (!init(&fm, &map)) {
-        free_prog(&fm, &map);
+    size_t size = get_size(&fm);
+    pos_t *pos = init(&fm, size);
+    if (!pos) {
+        free_prog(&fm, pos);
         return 3;
     }
 
-    size_t result1 = part1(&map);
+    size_t result1 = part1(pos, size);
 
-    printf("Part: 1: Beam splitting: %zu\n", result1);
-    free_prog(&fm, &map);
+    printf("Part: 1: Largest rectangle: %zu\n", result1);
+    free_prog(&fm, pos);
 
     return 0;
 }
 
-static size_t part1(const map_t *map) {
+static size_t part1(const pos_t *pos, size_t size) {
+    (void)pos;
+    long long int max = 0;
 
-    size_t row = 0;
-    size_t result = 0;
-    while (row < map->pos.row) {
-        size_t col = 0;
-        while (col < map->pos.col) {
-            if (map->grid[row][col] == '#') {
-                pos_t cur = {.row = row, .col = col};
-                size_t size = rectangel(map, &cur);
-                printf("%zu\n", size);
-                if (size > result) {
-                    result = size;
-                }
+    size_t index = 0;
+    while (index < size) {
+        size_t sub_index = index + 1;
+        while (sub_index < size) {
+            long int row_dif = ((long int)pos[index].row - (long int)pos[sub_index].row) + 1;
+            if (row_dif < 0) {
+                row_dif = -row_dif;
             }
-            ++col;
+
+            long int col_dif = ((long int)pos[index].col - (long int)pos[sub_index].col) + 1;
+            if (col_dif < 0) {
+                col_dif = -col_dif;
+            }
+
+            long int result = row_dif * col_dif;
+            if (result > max) {
+                max = result;
+            }
+            ++sub_index;
         }
-        ++row;
+
+        ++index;
+    }
+
+    return (size_t)max;
+}
+
+static size_t get_size(const filemap_t *fm) {
+    const char *buf = fm->buf;
+    size_t result = 0;
+    while (*buf) {
+        char *c = memchr(buf, '\n', fm->size - (size_t)(buf - fm->buf));
+        if (!c) {
+            return result;
+        }
+
+        ++result;
+        buf = c + 1;
     }
 
     return result;
 }
 
-static size_t rectangel(const map_t *map, pos_t *pos) {
-    // walk left
-    pos_t cur_pos = {.row = pos->row, .col = pos->col};
-    pos_t left_pos = {0};
-    while (cur_pos.row < map->pos.row && cur_pos.col < map->pos.col) {
-        if (map->grid[cur_pos.row][cur_pos.col] == '#') {
-            printf("cur: %zu, %zu\npos: %zu, %zu\n\n", cur_pos.row, cur_pos.col, pos->row, pos->col);
-            if (cur_pos.row > left_pos.row && cur_pos.col > left_pos.col) {
-                left_pos.row = cur_pos.row;
-                left_pos.col = cur_pos.col;
-            }
-        }
-
-        ++cur_pos.row;
-        ++cur_pos.col;
-    }
-    size_t left = (left_pos.col - pos->col) * (left_pos.row - pos->row);
-
-    // walk rigth
-    cur_pos.row = pos->row;
-    cur_pos.col = pos->col;
-    pos_t rigth_pos = {0};
-    while (cur_pos.row < map->pos.row && cur_pos.col < map->pos.col) {
-        if (map->grid[cur_pos.row][cur_pos.col] == '#') {
-            printf("cur: %zu, %zu\npos: %zu, %zu\n\n", cur_pos.row, cur_pos.col, pos->row, pos->col);
-            if (cur_pos.row > rigth_pos.row && cur_pos.col > rigth_pos.col) {
-                rigth_pos.row = cur_pos.row;
-                rigth_pos.col = cur_pos.col;
-            }
-        }
-
-        --cur_pos.row;
-        --cur_pos.col;
-    }
-    size_t rigth = (rigth_pos.col - pos->col) * (rigth_pos.row - pos->row);
-
-    if (left > rigth) {
-        return left;
-    }
-
-    return rigth;
-}
-
-static void get_size(const filemap_t *fm, map_t *map) {
-    const char *buf = fm->buf;
-
-    while (*buf) {
-        char *c = memchr(buf, '\n', fm->size - (size_t)(buf - fm->buf));
-        if (!c) {
-            return;
-        }
-
-        size_t col = (size_t)(c - buf);
-        if (col >= map->pos.col) {
-            map->pos.col = col;
-        }
-        ++map->pos.row;
-
-        buf = c + 1;
-    }
-}
-
-static bool init(const filemap_t *fm, map_t *map) {
-    map->grid = calloc(map->pos.row + 1, sizeof(*map->grid));
-    if (!map->grid) {
-        return false;
+static pos_t *init(const filemap_t *fm, size_t size) {
+    pos_t *pos = calloc(size + 1, sizeof(*pos));
+    if (!pos) {
+        return NULL;
     }
 
     size_t index = 0;
@@ -157,47 +112,38 @@ static bool init(const filemap_t *fm, map_t *map) {
     while (*buf) {
         char *c = memchr(buf, '\n', fm->size - (size_t)(buf - fm->buf));
         if (!c) {
-            return true;
+            return pos;
         }
 
-        map->grid[index] = calloc(map->pos.col + 1, sizeof(**map->grid));
-        if (!map->grid[index]) {
-            goto failed;
+        size_t len = (size_t)(c - buf);
+        char *endptr;
+        size_t col = strtoul(buf, &endptr, 10);
+
+        const char *comma = memchr(buf, ',', len);
+        if (!comma) {
+            free(pos);
+            return NULL;
         }
-        strncpy(map->grid[index], buf, map->pos.col);
+        size_t row = strtoul(comma + 1, &endptr, 10);
+
+        pos_t n_pos = {.row = row, .col = col};
+        pos[index] = n_pos;
 
         buf = c + 1;
         ++index;
     }
 
-    return true;
-failed:
-    if (map->grid) {
-        free_grid(map->grid);
-        map->grid = NULL;
-    }
-
-    return false;
+    return pos;
 }
 
-static void free_prog(filemap_t *fm, map_t *map) {
+static void free_prog(filemap_t *fm, pos_t *pos) {
     if (fm) {
         close(fm->fd);
         munmap(fm->buf, fm->size);
     }
 
-    free_grid(map->grid);
-}
-
-static void free_grid(char **grid) {
-    if (grid) {
-        size_t index = 0;
-        while (grid[index]) {
-            free(grid[index]);
-            ++index;
-        }
-
-        free(grid);
+    if (pos) {
+        free(pos);
     }
 }
 

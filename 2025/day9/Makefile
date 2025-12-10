@@ -21,7 +21,7 @@ all: $(NAME)  ## Build release version (default)
 
 .PHONY: run
 run: all  ## Build release and run
-	./$(NAME) simple_input.txt
+	./$(NAME) input.txt
 
 .PHONY: clean
 clean:  ## Clean object files
