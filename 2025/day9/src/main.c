@@ -1,6 +1,4 @@
 #include <fcntl.h>
-#include <stdbool.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,8 +52,7 @@ int main(int argc, char **argv) {
 }
 
 static size_t part1(const pos_t *pos, size_t size) {
-    (void)pos;
-    long long int max = 0;
+    long int max = 0;
 
     size_t index = 0;
     while (index < size) {
